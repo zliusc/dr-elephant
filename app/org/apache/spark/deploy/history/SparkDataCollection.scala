@@ -49,8 +49,8 @@ class SparkDataCollection extends SparkApplicationData {
   lazy val applicationEventListener = new ApplicationEventListener()
   lazy val jobProgressListener = new JobProgressListener(new SparkConf())
   lazy val environmentListener = new EnvironmentListener()
-  lazy val storageStatusListener = new StorageStatusListener()
-  lazy val executorsListener = new ExecutorsListener(storageStatusListener)
+  lazy val storageStatusListener = new StorageStatusListener(new SparkConf())
+  lazy val executorsListener = new ExecutorsListener(storageStatusListener, new SparkConf())
   lazy val storageListener = new StorageListener(storageStatusListener)
 
   // This is a customized listener that tracks peak used memory
@@ -164,10 +164,12 @@ class SparkDataCollection extends SparkApplicationData {
     if (_executorData == null) {
       _executorData = new SparkExecutorData()
 
-      for (statusId <- 0 until executorsListener.storageStatusList.size) {
+      val  storageStatusList = executorsListener.activeStorageStatusList ++ executorsListener.deadStorageStatusList
+
+      for (statusId <- 0 until storageStatusList.size) {
         val info = new ExecutorInfo()
 
-        val status = executorsListener.storageStatusList(statusId)
+        val status = storageStatusList(statusId)
 
         info.execId = status.blockManagerId.executorId
         info.hostPort = status.blockManagerId.hostPort
