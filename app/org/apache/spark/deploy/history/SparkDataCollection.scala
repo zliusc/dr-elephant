@@ -25,6 +25,7 @@ import com.linkedin.drelephant.analysis.ApplicationType
 import com.linkedin.drelephant.spark.legacydata._
 import com.linkedin.drelephant.spark.legacydata.SparkExecutorData.ExecutorInfo
 import com.linkedin.drelephant.spark.legacydata.SparkJobProgressData.JobInfo
+import org.apache.log4j.Logger
 
 import org.apache.spark.SparkConf
 import org.apache.spark.scheduler.{ApplicationEventListener, ReplayListenerBus, StageInfo}
@@ -180,15 +181,18 @@ class SparkDataCollection extends SparkApplicationData {
         info.memUsed = storageStatusTrackingListener.executorIdToMaxUsedMem.getOrElse(info.execId, 0L)
         info.maxMem = status.maxMem
         info.diskUsed = status.diskUsed
-        info.activeTasks = executorsListener.executorToTasksActive.getOrElse(info.execId, 0)
-        info.failedTasks = executorsListener.executorToTasksFailed.getOrElse(info.execId, 0)
-        info.completedTasks = executorsListener.executorToTasksComplete.getOrElse(info.execId, 0)
-        info.totalTasks = info.activeTasks + info.failedTasks + info.completedTasks
-        info.duration = executorsListener.executorToDuration.getOrElse(info.execId, 0L)
-        info.inputBytes = executorsListener.executorToInputBytes.getOrElse(info.execId, 0L)
-        info.shuffleRead = executorsListener.executorToShuffleRead.getOrElse(info.execId, 0L)
-        info.shuffleWrite = executorsListener.executorToShuffleWrite.getOrElse(info.execId, 0L)
 
+        val executorSummary = executorsListener.executorToTaskSummary.getOrElse(info.execId, null)
+        if (executorSummary != null) {
+          info.activeTasks = executorSummary.tasksActive
+          info.failedTasks = executorSummary.tasksFailed
+          info.completedTasks = executorSummary.tasksComplete
+          info.totalTasks = info.activeTasks + info.failedTasks + info.completedTasks
+          info.duration = executorSummary.duration
+          info.inputBytes = executorSummary.inputBytes
+          info.shuffleRead = executorSummary.shuffleRead
+          info.shuffleWrite = executorSummary.shuffleWrite
+        }
         _executorData.setExecutorInfo(info.execId, info)
       }
     }
@@ -330,3 +334,4 @@ object SparkDataCollection {
     }
   }
 }
+
